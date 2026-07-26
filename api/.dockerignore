@@ -1,0 +1,9 @@
+# Keep the build context small and reproducible. vendor/ in particular is ~40MB
+# and is installed inside the container, never copied in from the host.
+vendor/
+.phpunit.cache/
+.phpstan.cache/
+.phpunit.result.cache
+coverage/
+build/
+*.log

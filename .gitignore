@@ -1,0 +1,29 @@
+# PHP / Composer
+/api/vendor/
+/api/.phpunit.cache/
+/api/.phpstan.cache/
+/api/.phpunit.result.cache
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node / Angular (for when the web/ frontend lands)
+/web/node_modules/
+/web/dist/
+/web/.angular/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# Build / coverage artifacts
+/api/coverage/
+/api/build/
+*.log

@@ -1,0 +1,10 @@
+parameters:
+    level: 6
+    paths:
+        - src
+        - tests
+        - config
+        - bin
+        - cli-config.php
+    tmpDir: .phpstan.cache
+    treatPhpDocTypesAsCertain: false
