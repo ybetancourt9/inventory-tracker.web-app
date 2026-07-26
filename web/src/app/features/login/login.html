@@ -1,0 +1,57 @@
+<main class="shell">
+  <section class="card">
+    <header class="card__header">
+      <div class="mark" aria-hidden="true">IT</div>
+      <h1>Inventory Tracker</h1>
+      <p>Sign in to continue</p>
+    </header>
+
+    @if (errorMessage(); as message) {
+      <p class="alert" role="alert">{{ message }}</p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <input
+          id="username"
+          type="text"
+          formControlName="username"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          [attr.aria-invalid]="
+            form.controls.username.touched && form.controls.username.invalid
+          "
+        />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <span class="field__error">Username is required.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          [attr.aria-invalid]="
+            form.controls.password.touched && form.controls.password.invalid
+          "
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field__error">Password is required.</span>
+        }
+      </div>
+
+      <button type="submit" class="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p class="switch">
+      Don't have an account? <a routerLink="/register">Create one</a>
+    </p>
+  </section>
+</main>

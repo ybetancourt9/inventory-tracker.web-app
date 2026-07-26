@@ -1,0 +1,85 @@
+<main class="shell">
+  <section class="card">
+    <header class="card__header">
+      <div class="mark" aria-hidden="true">IT</div>
+      <h1>Create an account</h1>
+      <p>Set up access to Inventory Tracker</p>
+    </header>
+
+    @if (errorMessage(); as message) {
+      <p class="alert" role="alert">{{ message }}</p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <input
+          id="username"
+          type="text"
+          formControlName="username"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          [attr.aria-invalid]="
+            form.controls.username.touched && form.controls.username.invalid
+          "
+        />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <span class="field__error">
+            @if (form.controls.username.hasError('required')) {
+              Username is required.
+            } @else {
+              Username must be 64 characters or fewer.
+            }
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          autocomplete="new-password"
+          [attr.aria-invalid]="
+            form.controls.password.touched && form.controls.password.invalid
+          "
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field__error">
+            At least {{ passwordMinLength }} characters.
+          </span>
+        } @else {
+          <span class="field__hint">
+            At least {{ passwordMinLength }} characters. Length matters more than symbols.
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">Confirm password</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          formControlName="confirmPassword"
+          autocomplete="new-password"
+          [attr.aria-invalid]="
+            form.controls.confirmPassword.touched && form.hasError('passwordMismatch')
+          "
+        />
+        @if (form.controls.confirmPassword.touched && form.hasError('passwordMismatch')) {
+          <span class="field__error">Passwords do not match.</span>
+        }
+      </div>
+
+      <button type="submit" class="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Creating account…' : 'Create account' }}
+      </button>
+    </form>
+
+    <p class="switch">
+      Already have an account? <a routerLink="/login">Sign in</a>
+    </p>
+  </section>
+</main>

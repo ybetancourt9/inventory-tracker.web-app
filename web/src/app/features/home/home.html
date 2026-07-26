@@ -1,0 +1,19 @@
+<main class="shell">
+  <section class="card">
+    <h1>Signed in</h1>
+
+    @if (user(); as account) {
+      <dl class="details">
+        <dt>Username</dt>
+        <dd>{{ account.username }}</dd>
+        <dt>User ID</dt>
+        <dd>{{ account.id }}</dd>
+      </dl>
+      <p class="note">Resolved from <code>GET /auth/me</code> using the stored bearer token.</p>
+    } @else {
+      <p class="note">Loading account…</p>
+    }
+
+    <button type="button" class="logout" (click)="logout()">Sign out</button>
+  </section>
+</main>
