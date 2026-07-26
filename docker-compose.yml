@@ -84,6 +84,26 @@ services:
       retries: 3
       start_period: 10s
 
+  client:
+    image: node:24.18.0-alpine
+    container_name: inventory-tracker-client
+    working_dir: /app
+    # --poll: inotify does not fire for host edits through a Windows bind mount.
+    command: sh -c "npm install && npx ng serve --host 0.0.0.0 --port 4200 --poll 2000"
+    environment:
+      NG_CLI_ANALYTICS: "false"
+    ports:
+      - "127.0.0.1:${CLIENT_PORT:-4200}:4200"
+    volumes:
+      - ./web:/app
+      # Keeps node_modules off the bind mount, which is slow on Windows and
+      # would collide with any host-installed copy.
+      - client-node-modules:/app/node_modules
+    depends_on:
+      - web
+
 volumes:
   db-data:
     name: inventory-tracker-db-data
+  client-node-modules:
+    name: inventory-tracker-client-node-modules
