@@ -4,19 +4,12 @@ declare(strict_types=1);
 
 namespace InventoryTracker\Api;
 
-use Doctrine\ORM\EntityManagerInterface;
+use InventoryTracker\Infrastructure\Doctrine\EntityManagerProvider;
 use Throwable;
 
 /**
- * Liveness / readiness probe.
- *
- * Deliberately the first endpoint: a successful GET /health exercises the whole
- * chain end to end -- nginx -> php-fpm -> Composer autoload -> injected
- * environment -> Doctrine -> MySQL -- so a failure anywhere in the stack shows
- * up here rather than inside a feature endpoint.
- *
- * This is also the endpoint an AWS target group would poll, which is why it
- * reports dependency state instead of unconditionally returning 200.
+ * Liveness / readiness probe. Reports dependency state rather than always
+ * returning 200, so a load balancer can act on it.
  */
 final class Health
 {
@@ -39,19 +32,13 @@ final class Health
     }
 
     /**
-     * Round-trip a trivial query to prove the connection is genuinely usable,
-     * not merely configured.
-     *
-     * Failure detail is logged rather than returned: an unauthenticated probe
-     * should never hand a caller the DB host, user, or driver error text.
+     * Round-trips a query so the result reflects a usable connection, not just
+     * a configured one. Failure detail is logged, never returned.
      */
     private function checkDatabase(): string
     {
         try {
-            /** @var EntityManagerInterface $entityManager */
-            $entityManager = require dirname(__DIR__, 2) . '/config/bootstrap.php';
-
-            $entityManager->getConnection()->executeQuery('SELECT 1')->fetchOne();
+            EntityManagerProvider::get()->getConnection()->executeQuery('SELECT 1')->fetchOne();
 
             return 'up';
         } catch (Throwable $e) {
