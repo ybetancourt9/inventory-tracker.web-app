@@ -4,6 +4,9 @@
 /api/.phpstan.cache/
 /api/.phpunit.result.cache
 
+# Doctrine generated proxies -- build output, regenerated from the entities.
+/api/var/
+
 # Environment
 .env
 .env.local

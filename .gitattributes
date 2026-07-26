@@ -1,0 +1,34 @@
+# Normalise line endings.
+#
+# Development happens on Windows but everything executes inside Linux
+# containers, and PSR-12 requires LF. Without this, an editor saving CRLF makes
+# `composer lint` fail on files nobody meaningfully changed -- and shell scripts
+# copied into an image with CRLF fail at runtime with an unhelpful
+# "bad interpreter" error.
+#
+# Default: Git decides what is text and stores it with LF in the repository.
+* text=auto eol=lf
+
+# Files that must be LF regardless of platform, because Linux executes them.
+*.php    text eol=lf
+*.sh     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.json   text eol=lf
+*.neon   text eol=lf
+*.xml    text eol=lf
+*.conf   text eol=lf
+*.ini    text eol=lf
+Dockerfile      text eol=lf
+.dockerignore   text eol=lf
+.env.example    text eol=lf
+
+# Binary: never touch these.
+*.docx   binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.zip    binary

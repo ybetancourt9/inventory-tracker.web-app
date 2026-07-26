@@ -19,4 +19,13 @@
     <exclude-pattern>*/.phpstan.cache/*</exclude-pattern>
 
     <rule ref="PSR12"/>
+
+    <!--
+        Restler's AuthenticationInterface / FilterInterface declare _isAllowed()
+        with a leading underscore. Implementing classes have no choice about the
+        name, so the sniff is disabled for filters only rather than repo-wide.
+    -->
+    <rule ref="PSR2.Methods.MethodDeclaration.Underscore">
+        <exclude-pattern>src/Api/Filters/*</exclude-pattern>
+    </rule>
 </ruleset>
