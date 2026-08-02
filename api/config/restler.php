@@ -5,6 +5,7 @@ declare(strict_types=1);
 use InventoryTracker\Api\Auth;
 use InventoryTracker\Api\Filters\JwtAuthenticator;
 use InventoryTracker\Api\Health;
+use InventoryTracker\Api\Products;
 use Luracast\Restler\Defaults;
 use Luracast\Restler\MediaTypes\Json;
 use Luracast\Restler\Routes;
@@ -27,6 +28,7 @@ Defaults::$crossOriginResourceSharing = false;
 Routes::addAuthenticator(JwtAuthenticator::class);
 
 Routes::mapApiClasses([
-    'health' => Health::class,
-    'auth'   => Auth::class,
+    'health'   => Health::class,
+    'auth'     => Auth::class,
+    'products' => Products::class,
 ]);

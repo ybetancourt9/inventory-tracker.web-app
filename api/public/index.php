@@ -12,8 +12,10 @@ declare(strict_types=1);
 use InventoryTracker\Application\Auth\AuthenticatedUser;
 use InventoryTracker\Application\Auth\TokenIssuer;
 use InventoryTracker\Application\Auth\TokenVerifier;
+use InventoryTracker\Domain\Repository\ProductRepositoryInterface;
 use InventoryTracker\Domain\Repository\UserRepositoryInterface;
 use InventoryTracker\Infrastructure\Doctrine\EntityManagerProvider;
+use InventoryTracker\Infrastructure\Doctrine\Repository\DoctrineProductRepository;
 use InventoryTracker\Infrastructure\Doctrine\Repository\DoctrineUserRepository;
 use Luracast\Restler\Container;
 use Luracast\Restler\Restler;
@@ -26,6 +28,11 @@ $restler   = new Restler($container);
 $container->instance(
     UserRepositoryInterface::class,
     new DoctrineUserRepository(EntityManagerProvider::get())
+);
+
+$container->instance(
+    ProductRepositoryInterface::class,
+    new DoctrineProductRepository(EntityManagerProvider::get())
 );
 
 $container->instance(TokenIssuer::class, TokenIssuer::fromEnvironment());
