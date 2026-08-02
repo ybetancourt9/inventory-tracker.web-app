@@ -1,0 +1,190 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">IT</span>
+    <h1>Inventory Tracker</h1>
+  </div>
+
+  <div class="account">
+    @if (user(); as account) {
+      <span class="who">{{ account.username }}</span>
+    }
+    <button type="button" class="ghost" (click)="logout()">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="toolbar">
+    <input
+      type="search"
+      class="search"
+      placeholder="Search by name or SKU"
+      autocomplete="off"
+      spellcheck="false"
+      [formControl]="search"
+      aria-label="Search products"
+    />
+
+    <div class="filters">
+      <label class="check">
+        <input type="checkbox" [checked]="lowStock()" (change)="toggleLowStock()" />
+        Low stock only
+      </label>
+
+      @if (lowStock()) {
+        <label class="check threshold">
+          below
+          <input
+            type="number"
+            min="1"
+            step="1"
+            [value]="threshold()"
+            (change)="setThreshold($any($event.target))"
+            aria-label="Low stock threshold"
+          />
+        </label>
+      }
+
+      <label class="check">
+        <input type="checkbox" [checked]="includeInactive()" (change)="toggleInactive()" />
+        Include retired
+      </label>
+
+      <button type="button" class="primary" (click)="showAdd.set(!showAdd())">
+        {{ showAdd() ? 'Cancel' : 'Add product' }}
+      </button>
+    </div>
+  </section>
+
+  @if (showAdd()) {
+    <form class="add" [formGroup]="addForm" (ngSubmit)="add()" novalidate>
+      <input
+        type="text"
+        placeholder="SKU"
+        formControlName="sku"
+        autocapitalize="characters"
+        spellcheck="false"
+        aria-label="New product SKU"
+      />
+      <input
+        type="text"
+        placeholder="Name"
+        formControlName="name"
+        aria-label="New product name"
+      />
+      <input
+        type="number"
+        min="0"
+        placeholder="Qty"
+        formControlName="quantity"
+        aria-label="New product quantity"
+      />
+      <button type="submit" class="primary" [disabled]="addForm.invalid || loading()">
+        Create
+      </button>
+    </form>
+  }
+
+  @if (error(); as message) {
+    <p class="alert" role="alert">{{ message }}</p>
+  }
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <button type="button" class="sortable" (click)="sortBy('sku')">
+              SKU
+              @if (sort() === 'sku') {<span class="caret">{{ direction() === 'asc' ? '▲' : '▼' }}</span>}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sortable" (click)="sortBy('name')">
+              Name
+              @if (sort() === 'name') {<span class="caret">{{ direction() === 'asc' ? '▲' : '▼' }}</span>}
+            </button>
+          </th>
+          <th class="num">
+            <button type="button" class="sortable" (click)="sortBy('quantity')">
+              Quantity
+              @if (sort() === 'quantity') {<span class="caret">{{ direction() === 'asc' ? '▲' : '▼' }}</span>}
+            </button>
+          </th>
+          <th class="actions">
+            <button type="button" class="sortable" (click)="sortBy('updatedAt')">
+              Updated
+              @if (sort() === 'updatedAt') {<span class="caret">{{ direction() === 'asc' ? '▲' : '▼' }}</span>}
+            </button>
+          </th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @for (product of items(); track product.id) {
+          <tr [class.retired]="!product.isActive" [class.busy]="busyId() === product.id">
+            <td class="sku">{{ product.sku }}</td>
+            <td>
+              {{ product.name }}
+              @if (!product.isActive) {<span class="badge">retired</span>}
+            </td>
+            <td class="num">
+              <div class="stepper">
+                <button
+                  type="button"
+                  (click)="adjust(product, -1)"
+                  [disabled]="busyId() === product.id"
+                  [attr.aria-label]="'Decrease ' + product.name"
+                >−</button>
+                <input
+                  type="number"
+                  min="0"
+                  [value]="product.quantity"
+                  (change)="setQuantity(product, $any($event.target))"
+                  [disabled]="busyId() === product.id"
+                  [attr.aria-label]="'Quantity for ' + product.name"
+                />
+                <button
+                  type="button"
+                  (click)="adjust(product, 1)"
+                  [disabled]="busyId() === product.id"
+                  [attr.aria-label]="'Increase ' + product.name"
+                >+</button>
+              </div>
+            </td>
+            <td class="actions">
+              <button
+                type="button"
+                class="danger"
+                (click)="remove(product)"
+                [disabled]="busyId() === product.id || !product.isActive"
+                [attr.aria-label]="'Retire ' + product.name"
+              >🗑</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="4" class="empty">
+              {{ loading() ? 'Loading…' : 'No products match those filters.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="pager">
+    <span class="count">
+      {{ total() }} product{{ total() === 1 ? '' : 's' }}
+      @if (pageCount() > 1) {<span>· page {{ page() }} of {{ pageCount() }}</span>}
+    </span>
+
+    <span class="buttons">
+      <button type="button" (click)="goTo(page() - 1)" [disabled]="!canPrev() || loading()">
+        Previous
+      </button>
+      <button type="button" (click)="goTo(page() + 1)" [disabled]="!canNext() || loading()">
+        Next
+      </button>
+    </span>
+  </footer>
+</main>

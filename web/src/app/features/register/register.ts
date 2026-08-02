@@ -70,7 +70,7 @@ export class Register {
       .pipe(switchMap(() => this.auth.login(username, password)))
       .subscribe({
         next: () => {
-          void this.router.navigate(['/home']);
+          void this.router.navigate(['/products']);
         },
         error: (error: HttpErrorResponse) => {
           this.submitting.set(false);

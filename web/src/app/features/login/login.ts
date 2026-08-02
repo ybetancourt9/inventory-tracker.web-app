@@ -37,7 +37,7 @@ export class Login {
 
     this.auth.login(username, password).subscribe({
       next: () => {
-        void this.router.navigate(['/home']);
+        void this.router.navigate(['/products']);
       },
       error: (error: HttpErrorResponse) => {
         this.submitting.set(false);
