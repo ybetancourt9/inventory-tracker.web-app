@@ -9,6 +9,7 @@ use InventoryTracker\Application\Auth\AuthenticatedUser;
 use InventoryTracker\Application\Auth\TokenIssuer;
 use InventoryTracker\Application\Auth\TokenVerifier;
 use InventoryTracker\Domain\Entity\User;
+use InventoryTracker\Tests\Support\InMemoryRateLimiter;
 use InventoryTracker\Tests\Support\InMemoryUserRepository;
 use Luracast\Restler\Exceptions\HttpException;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,10 +26,13 @@ final class AuthTest extends TestCase
 
     private AuthenticatedUser $authenticatedUser;
 
+    private InMemoryRateLimiter $rateLimiter;
+
     protected function setUp(): void
     {
         $this->users             = new InMemoryUserRepository();
         $this->authenticatedUser = new AuthenticatedUser();
+        $this->rateLimiter       = new InMemoryRateLimiter();
 
         $this->users->save(User::register('yaumel', self::PASSWORD));
     }
@@ -168,6 +172,75 @@ final class AuthTest extends TestCase
         $this->auth()->getMe();
     }
 
+    public function testRepeatedGuessesAgainstOneAccountAreEventuallyRefused(): void
+    {
+        // The limit is per username, so a correct password is irrelevant here:
+        // what is being capped is how often the account may be tried at all.
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $failure = $this->captureFailure('yaumel', 'wrong-password');
+            self::assertSame(401, $failure['code'], "attempt $attempt should still be answered");
+        }
+
+        $blocked = $this->captureFailure('yaumel', 'wrong-password');
+
+        self::assertSame(429, $blocked['code']);
+        self::assertSame('Too many attempts. Please try again later.', $blocked['message']);
+    }
+
+    public function testTheBlockedResponseTellsTheCallerWhenToRetry(): void
+    {
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $this->captureFailure('yaumel', 'wrong-password');
+        }
+
+        try {
+            $this->auth()->postLogin('yaumel', 'wrong-password');
+        } catch (HttpException $e) {
+            self::assertArrayHasKey('Retry-After', $e->getHeaders());
+            self::assertGreaterThan(0, (int) $e->getHeaders()['Retry-After']);
+
+            return;
+        }
+
+        self::fail('Expected the login to be refused.');
+    }
+
+    public function testSpreadingGuessesAcrossAccountsStillHitsTheAddressLimit(): void
+    {
+        // Twenty attempts, each against a different account, so the per-username
+        // counter never fills. Only the address counter catches this.
+        for ($attempt = 1; $attempt <= 20; $attempt++) {
+            $failure = $this->captureFailure('account' . $attempt, 'wrong-password');
+            self::assertSame(401, $failure['code'], "attempt $attempt should still be answered");
+        }
+
+        self::assertSame(429, $this->captureFailure('yet-another', 'wrong-password')['code']);
+    }
+
+    public function testRegistrationIsCappedPerAddress(): void
+    {
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $created = $this->auth()->postRegister('person' . $attempt, 'a-sufficiently-long-password');
+            self::assertSame('person' . $attempt, $created['username']);
+        }
+
+        $blocked = $this->captureRegisterFailure('person6', 'a-sufficiently-long-password');
+
+        self::assertSame(429, $blocked['code']);
+    }
+
+    public function testTheLimitIsCountedBeforeTheAccountIsCreated(): void
+    {
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->auth()->postRegister('person' . $attempt, 'a-sufficiently-long-password');
+        }
+
+        $this->captureRegisterFailure('person6', 'a-sufficiently-long-password');
+
+        // A refused registration must not leave a usable account behind.
+        self::assertNull($this->users->findByUsername('person6'));
+    }
+
     /**
      * @return array{code: int, message: string}
      */
@@ -202,6 +275,7 @@ final class AuthTest extends TestCase
             $this->users,
             new TokenIssuer(self::SECRET, self::ISSUER, 3600),
             $this->authenticatedUser,
+            $this->rateLimiter,
         );
     }
 }
