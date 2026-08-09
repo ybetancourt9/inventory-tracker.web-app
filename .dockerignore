@@ -1,0 +1,13 @@
+# Root build context, used by web/Dockerfile so it can reach docker/nginx/.
+.git/
+
+api/vendor/
+api/var/
+api/.phpunit.cache/
+api/.phpstan.cache/
+
+web/node_modules/
+web/dist/
+web/.angular/
+
+**/*.log

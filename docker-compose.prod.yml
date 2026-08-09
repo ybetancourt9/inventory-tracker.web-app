@@ -1,0 +1,60 @@
+# Production images, runnable locally for verification. Unlike the development
+# stack there are no bind mounts and no database service: the source is baked
+# into the images and the database is RDS.
+#
+# Secrets come from the environment, never from a file in the image. Locally,
+# scripts/run-prod-local.ps1 pulls them from SSM Parameter Store and opens the
+# tunnel that DB_HOST points at.
+
+# Distinct project name: without it this shares the directory-derived name with
+# docker-compose.yml and the two stacks replace each other's containers.
+name: inventory-tracker-prod
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: prod
+    image: inventory-tracker-api:prod
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSL_CA: /etc/ssl/certs/rds-global-bundle.pem
+      # Certificates name the RDS endpoint, so verification only holds when the
+      # connection is direct. Leave unset in AWS.
+      DB_SSL_VERIFY: ${DB_SSL_VERIFY:-true}
+      DB_SERVER_VERSION: ${DB_SERVER_VERSION:-8.0.46}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-inventory-tracker-api}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-3600}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(extension_loaded('pdo_mysql') ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      target: prod
+    image: inventory-tracker-web:prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROD_WEB_PORT:-8081}:80"
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

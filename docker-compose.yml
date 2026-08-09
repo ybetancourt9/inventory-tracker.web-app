@@ -1,6 +1,6 @@
 services:
   db:
-    image: mysql:8.0.40
+    image: mysql:8.0.46
     container_name: inventory-tracker-db
     restart: unless-stopped
     ports:
@@ -35,6 +35,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      target: dev
     image: inventory-tracker-api:local
     container_name: inventory-tracker-api
     restart: unless-stopped
