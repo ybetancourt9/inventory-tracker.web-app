@@ -1,13 +1,7 @@
-# Production images, runnable locally for verification. Unlike the development
-# stack there are no bind mounts and no database service: the source is baked
-# into the images and the database is RDS.
-#
 # Secrets come from the environment, never from a file in the image. Locally,
 # scripts/run-prod-local.ps1 pulls them from SSM Parameter Store and opens the
 # tunnel that DB_HOST points at.
 
-# Distinct project name: without it this shares the directory-derived name with
-# docker-compose.yml and the two stacks replace each other's containers.
 name: inventory-tracker-prod
 
 services:
