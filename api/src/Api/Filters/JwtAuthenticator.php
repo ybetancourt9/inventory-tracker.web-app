@@ -8,6 +8,7 @@ use InventoryTracker\Application\Auth\AuthenticatedUser;
 use InventoryTracker\Application\Auth\TokenVerifier;
 use Luracast\Restler\Contracts\AuthenticationInterface;
 use Luracast\Restler\Contracts\UserIdentificationInterface;
+use Luracast\Restler\Exceptions\InvalidAuthCredentials;
 use Luracast\Restler\ResponseHeaders;
 use Psr\Http\Message\ServerRequestInterface;
 use Throwable;
@@ -16,7 +17,8 @@ use Throwable;
  * Bearer-token authentication filter.
  *
  * Restler runs this before dispatching any route annotated `@access protected`.
- * Returning false produces a 401 carrying the WWW-Authenticate header below.
+ * Rejections throw rather than return false, because Restler answers a false
+ * with a body naming this class, which tells a caller how the API is built.
  */
 final class JwtAuthenticator implements AuthenticationInterface
 {
@@ -39,7 +41,7 @@ final class JwtAuthenticator implements AuthenticationInterface
         $token = $this->extractBearerToken($request->getHeaderLine('Authorization'));
 
         if ($token === null) {
-            return false;
+            throw new InvalidAuthCredentials('Unauthorized');
         }
 
         try {
@@ -49,7 +51,7 @@ final class JwtAuthenticator implements AuthenticationInterface
             // the log, not the response.
             error_log('[auth] token rejected: ' . $e->getMessage());
 
-            return false;
+            throw new InvalidAuthCredentials('Unauthorized');
         }
 
         $this->authenticatedUser->set($userId);

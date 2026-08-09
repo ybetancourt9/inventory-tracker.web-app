@@ -18,6 +18,12 @@ $isProduction = ($_ENV['APP_ENV'] ?? 'production') === 'production';
 // stack traces and internal detail back to the client.
 Defaults::$productionMode = $isProduction;
 
+// Production mode caches the route map to disk instead of rebuilding it per
+// request, and Restler refuses to start without somewhere to write it.
+if ($isProduction) {
+    Defaults::$cacheDirectory = __DIR__ . '/../var/cache';
+}
+
 Defaults::$charset = 'utf-8';
 
 Routes::setOverridingResponseMediaTypes(Json::class);
