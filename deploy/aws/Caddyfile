@@ -1,0 +1,22 @@
+{
+	# Where Let's Encrypt sends expiry and problem notices.
+	email ybeta9@gmail.com
+}
+
+inventtracker.com, www.inventtracker.com {
+	# Caddy sits in front of nginx, so nginx would otherwise see Caddy as the
+	# client and every caller would share one rate-limit bucket.
+	reverse_proxy web:80 {
+		header_up X-Real-IP {remote_host}
+	}
+
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

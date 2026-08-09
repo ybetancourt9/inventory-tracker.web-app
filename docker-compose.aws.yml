@@ -39,11 +39,32 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  web:
-    image: ${ECR_REGISTRY}/inventory-tracker-web:${IMAGE_TAG:-latest}
+  # Terminates TLS and obtains certificates from Let's Encrypt on its own. The
+  # named volume holds them, so a restart does not trigger reissue and run into
+  # rate limits.
+  caddy:
+    image: caddy:2.10.2-alpine
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/inventory-tracker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    image: ${ECR_REGISTRY}/inventory-tracker-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # No published ports: Caddy is the only way in, which is also what makes
+    # the X-Real-IP header it sets trustworthy.
     depends_on:
       - api
     healthcheck:
@@ -57,3 +78,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  caddy-data:
+  caddy-config:

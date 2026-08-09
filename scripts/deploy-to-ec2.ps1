@@ -23,9 +23,10 @@ function Encode($path) {
 # Base64 avoids every quoting problem that arises from pushing file contents
 # through a JSON command document.
 $files = @{
-    '/opt/inventory-tracker/docker-compose.aws.yml'          = Encode "$Root/docker-compose.aws.yml"
-    '/usr/local/bin/fetch-env'                               = Encode "$Root/deploy/aws/fetch-env.sh"
-    '/etc/systemd/system/inventory-tracker.service'          = Encode "$Root/deploy/aws/inventory-tracker.service"
+    '/opt/inventory-tracker/docker-compose.aws.yml'  = Encode "$Root/docker-compose.aws.yml"
+    '/opt/inventory-tracker/Caddyfile'               = Encode "$Root/deploy/aws/Caddyfile"
+    '/usr/local/bin/fetch-env'                       = Encode "$Root/deploy/aws/fetch-env.sh"
+    '/etc/systemd/system/inventory-tracker.service'  = Encode "$Root/deploy/aws/inventory-tracker.service"
 }
 
 $commands = @(
@@ -44,17 +45,30 @@ $commands += @(
     "systemctl daemon-reload",
     "systemctl enable inventory-tracker",
     "systemctl restart inventory-tracker",
-    "sleep 15",
-    "docker compose -f /opt/inventory-tracker/docker-compose.aws.yml ps"
+    "sleep 20",
+    # Plain docker ps, not compose ps: the compose file interpolates secrets
+    # that only exist for the lifetime of the unit's own start.
+    "docker ps --format '{{.Names}}  {{.Status}}'",
+    "curl -fsS -o /dev/null -w 'health: %{http_code}\n' http://127.0.0.1/api/health"
 )
 
 $payload = @{ commands = $commands } | ConvertTo-Json -Depth 5 -Compress
 
-$commandId = aws ssm send-command --profile $AwsProfile --region $Region `
-    --instance-ids $InstanceId `
-    --document-name AWS-RunShellScript `
-    --parameters $payload `
-    --query 'Command.CommandId' --output text
+# Written to a file rather than passed inline: PowerShell strips the quotes out
+# of JSON on its way to a native command. UTF8Encoding($false) because the CLI
+# rejects a byte order mark.
+$payloadFile = Join-Path ([IO.Path]::GetTempPath()) 'inventory-tracker-deploy.json'
+[IO.File]::WriteAllText($payloadFile, $payload, (New-Object Text.UTF8Encoding($false)))
+
+try {
+    $commandId = aws ssm send-command --profile $AwsProfile --region $Region `
+        --instance-ids $InstanceId `
+        --document-name AWS-RunShellScript `
+        --parameters "file://$payloadFile" `
+        --query 'Command.CommandId' --output text
+} finally {
+    Remove-Item $payloadFile -ErrorAction SilentlyContinue
+}
 
 Write-Host "Command $commandId dispatched, waiting..."
 

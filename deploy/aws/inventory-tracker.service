@@ -14,8 +14,11 @@ WorkingDirectory=/opt/inventory-tracker
 ExecStartPre=/usr/local/bin/fetch-env
 ExecStartPre=/usr/local/bin/ecr-login
 
-ExecStart=/usr/bin/docker compose --env-file /run/inventory-tracker.env -f docker-compose.aws.yml up -d --pull always
-ExecStop=/usr/bin/docker compose -f docker-compose.aws.yml down
+# Two env files, because --env-file replaces compose's default .env lookup
+# instead of adding to it. The first holds the registry and tag, the second the
+# secrets; later files win.
+ExecStart=/usr/bin/docker compose --env-file /opt/inventory-tracker/.env --env-file /run/inventory-tracker.env -f docker-compose.aws.yml up -d --pull always
+ExecStop=/usr/bin/docker compose --env-file /opt/inventory-tracker/.env -f docker-compose.aws.yml down
 
 # The env file is only needed while compose reads it.
 ExecStartPost=/usr/bin/shred -u /run/inventory-tracker.env
