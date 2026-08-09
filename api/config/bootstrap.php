@@ -26,7 +26,7 @@ $config->setAutoGenerateProxyClasses(
     $isDevMode ? ProxyFactory::AUTOGENERATE_FILE_NOT_EXISTS : ProxyFactory::AUTOGENERATE_NEVER
 );
 
-$connection = DriverManager::getConnection([
+$params = [
     'driver'   => 'pdo_mysql',
     'host'     => $_ENV['DB_HOST'] ?? '127.0.0.1',
     'port'     => (int) ($_ENV['DB_PORT'] ?? 3306),
@@ -34,6 +34,21 @@ $connection = DriverManager::getConnection([
     'user'     => $_ENV['DB_USER'] ?? '',
     'password' => $_ENV['DB_PASSWORD'] ?? '',
     'charset'  => 'utf8mb4',
-], $config);
+    // Without this DBAL opens a connection just to detect the platform, which
+    // also makes offline commands such as orm:generate-proxies fail.
+    'serverVersion' => $_ENV['DB_SERVER_VERSION'] ?? '8.0.46',
+];
+
+// Setting a CA turns on TLS. The local container speaks plaintext over the
+// compose network, so this stays unset there and is required against RDS.
+$sslCa = $_ENV['DB_SSL_CA'] ?? '';
+
+if ($sslCa !== '') {
+    $params['driverOptions'][PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+    $params['driverOptions'][PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] =
+        ($_ENV['DB_SSL_VERIFY'] ?? 'true') !== 'false';
+}
+
+$connection = DriverManager::getConnection($params, $config);
 
 return new EntityManager($connection, $config);
