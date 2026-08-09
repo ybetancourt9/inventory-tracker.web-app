@@ -4,11 +4,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Logo } from '../../shared/logo';
 import { ApiErrorBody } from '../../core/auth/auth.models';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Logo],
   templateUrl: './login.html',
   styleUrls: ['../auth-card.css'],
 })

@@ -43,4 +43,8 @@ export class ProductService {
   remove(id: number): Observable<Product> {
     return this.http.delete<Product>(`${BASE}/${id}`);
   }
+
+  restore(id: number): Observable<Product> {
+    return this.http.post<Product>(`${BASE}/${id}/restore`, {});
+  }
 }

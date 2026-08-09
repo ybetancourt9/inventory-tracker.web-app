@@ -1,6 +1,6 @@
 <header class="topbar">
   <div class="brand">
-    <span class="mark" aria-hidden="true">IT</span>
+    <span class="mark" aria-hidden="true"><app-logo size="1.15rem" /></span>
     <h1>Inventory Tracker</h1>
   </div>
 
@@ -132,7 +132,7 @@
                 <button
                   type="button"
                   (click)="adjust(product, -1)"
-                  [disabled]="busyId() === product.id"
+                  [disabled]="busyId() === product.id || !product.isActive"
                   [attr.aria-label]="'Decrease ' + product.name"
                 >−</button>
                 <input
@@ -140,25 +140,38 @@
                   min="0"
                   [value]="product.quantity"
                   (change)="setQuantity(product, $any($event.target))"
-                  [disabled]="busyId() === product.id"
+                  [disabled]="busyId() === product.id || !product.isActive"
                   [attr.aria-label]="'Quantity for ' + product.name"
+                  [attr.title]="
+                    product.isActive ? null : 'Restore this product to change its stock'
+                  "
                 />
                 <button
                   type="button"
                   (click)="adjust(product, 1)"
-                  [disabled]="busyId() === product.id"
+                  [disabled]="busyId() === product.id || !product.isActive"
                   [attr.aria-label]="'Increase ' + product.name"
                 >+</button>
               </div>
             </td>
             <td class="actions">
-              <button
-                type="button"
-                class="danger"
-                (click)="remove(product)"
-                [disabled]="busyId() === product.id || !product.isActive"
-                [attr.aria-label]="'Retire ' + product.name"
-              >🗑</button>
+              @if (product.isActive) {
+                <button
+                  type="button"
+                  class="danger"
+                  (click)="remove(product)"
+                  [disabled]="busyId() === product.id"
+                  [attr.aria-label]="'Retire ' + product.name"
+                >🗑</button>
+              } @else {
+                <button
+                  type="button"
+                  class="restore"
+                  (click)="restore(product)"
+                  [disabled]="busyId() === product.id"
+                  [attr.aria-label]="'Restore ' + product.name"
+                >↩</button>
+              }
             </td>
           </tr>
         } @empty {

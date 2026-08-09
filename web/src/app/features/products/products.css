@@ -338,6 +338,30 @@ button:disabled {
   background: var(--danger-surface);
 }
 
+.restore {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.restore:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-ring);
+}
+
+/* The row is dimmed as a whole, which would otherwise hide the one control
+   still worth clicking. */
+tr.retired .restore {
+  opacity: 1;
+}
+
 .pager {
   display: flex;
   flex-wrap: wrap;

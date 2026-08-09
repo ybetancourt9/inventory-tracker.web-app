@@ -11,6 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Logo } from '../../shared/logo';
 import { ApiErrorBody } from '../../core/auth/auth.models';
 
 /** Mirrors the API: min 12 characters, max 64 for the username. */
@@ -26,7 +27,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Logo],
   templateUrl: './register.html',
   styleUrls: ['../auth-card.css'],
 })

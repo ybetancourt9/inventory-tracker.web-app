@@ -9,6 +9,7 @@ import {
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { Logo } from '../../shared/logo';
 import { ApiErrorBody } from '../../core/auth/auth.models';
 import { ProductService } from '../../core/products/product.service';
 import {
@@ -20,7 +21,7 @@ import {
 
 @Component({
   selector: 'app-products',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Logo],
   templateUrl: './products.html',
   styleUrl: './products.css',
 })
@@ -157,6 +158,10 @@ export class Products implements OnInit {
   }
 
   protected adjust(product: Product, delta: number): void {
+    if (!product.isActive) {
+      return;
+    }
+
     this.mutate(product.id, this.api.adjust(product.id, delta));
   }
 
@@ -165,6 +170,11 @@ export class Products implements OnInit {
    * so clearing the box cannot be read as "set this to nothing".
    */
   protected setQuantity(product: Product, input: HTMLInputElement): void {
+    if (!product.isActive) {
+      input.value = String(product.quantity);
+      return;
+    }
+
     const raw = input.value.trim();
     const parsed = Number(raw);
     const usable = raw !== '' && Number.isFinite(parsed) && parsed >= 0;
@@ -181,6 +191,14 @@ export class Products implements OnInit {
 
   protected remove(product: Product): void {
     this.mutate(product.id, this.api.remove(product.id), true);
+  }
+
+  /**
+   * Reloads because a restored product may no longer belong on this page once
+   * the retired filter is off.
+   */
+  protected restore(product: Product): void {
+    this.mutate(product.id, this.api.restore(product.id), true);
   }
 
   protected add(): void {
