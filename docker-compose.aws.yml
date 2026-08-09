@@ -1,0 +1,59 @@
+# Runs on the EC2 host. Unlike docker-compose.prod.yml this builds nothing: the
+# images are built on a workstation and pulled from ECR, so a t3.micro never has
+# to compile anything.
+#
+# DB_PASSWORD and JWT_SECRET arrive from /run/inventory-tracker.env, written by
+# fetch-env from Parameter Store. Everything else here is non-secret.
+
+name: inventory-tracker
+
+services:
+  api:
+    image: ${ECR_REGISTRY}/inventory-tracker-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_HOST: inventory-tracker-db.cuhiemgc0osy.us-east-1.rds.amazonaws.com
+      DB_PORT: 3306
+      DB_NAME: inventory_tracker
+      DB_USER: inventory_app
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing; is fetch-env running?}
+      # Direct connection to the RDS endpoint, so the certificate hostname
+      # matches and verification stays on.
+      DB_SSL_CA: /etc/ssl/certs/rds-global-bundle.pem
+      DB_SSL_VERIFY: "true"
+      DB_SERVER_VERSION: "8.0.46"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET missing; is fetch-env running?}
+      JWT_ISSUER: inventory-tracker-api
+      JWT_TTL_SECONDS: 3600
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(extension_loaded('pdo_mysql') ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    image: ${ECR_REGISTRY}/inventory-tracker-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
