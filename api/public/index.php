@@ -12,11 +12,14 @@ declare(strict_types=1);
 use InventoryTracker\Application\Auth\AuthenticatedUser;
 use InventoryTracker\Application\Auth\TokenIssuer;
 use InventoryTracker\Application\Auth\TokenVerifier;
+use InventoryTracker\Application\RateLimit\RateLimiter;
 use InventoryTracker\Domain\Repository\ProductRepositoryInterface;
 use InventoryTracker\Domain\Repository\UserRepositoryInterface;
 use InventoryTracker\Infrastructure\Doctrine\EntityManagerProvider;
 use InventoryTracker\Infrastructure\Doctrine\Repository\DoctrineProductRepository;
 use InventoryTracker\Infrastructure\Doctrine\Repository\DoctrineUserRepository;
+use InventoryTracker\Infrastructure\RateLimit\ApcuRateLimiter;
+use InventoryTracker\Infrastructure\RateLimit\NullRateLimiter;
 use Luracast\Restler\Container;
 use Luracast\Restler\Restler;
 
@@ -33,6 +36,11 @@ $container->instance(
 $container->instance(
     ProductRepositoryInterface::class,
     new DoctrineProductRepository(EntityManagerProvider::get())
+);
+
+$container->instance(
+    RateLimiter::class,
+    ApcuRateLimiter::isSupported() ? new ApcuRateLimiter() : new NullRateLimiter()
 );
 
 $container->instance(TokenIssuer::class, TokenIssuer::fromEnvironment());

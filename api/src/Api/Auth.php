@@ -7,11 +7,14 @@ namespace InventoryTracker\Api;
 use InvalidArgumentException;
 use InventoryTracker\Application\Auth\AuthenticatedUser;
 use InventoryTracker\Application\Auth\TokenIssuer;
+use InventoryTracker\Application\RateLimit\RateLimiter;
 use InventoryTracker\Domain\Entity\User;
 use InventoryTracker\Domain\Exception\UsernameAlreadyTaken;
 use InventoryTracker\Domain\Repository\UserRepositoryInterface;
 use InventoryTracker\Infrastructure\Doctrine\EntityManagerProvider;
 use InventoryTracker\Infrastructure\Doctrine\Repository\DoctrineUserRepository;
+use InventoryTracker\Infrastructure\RateLimit\ApcuRateLimiter;
+use InventoryTracker\Infrastructure\RateLimit\NullRateLimiter;
 use Luracast\Restler\Exceptions\HttpException;
 use SensitiveParameter;
 
@@ -31,22 +34,44 @@ final class Auth
     private const DUMMY_HASH =
         '$argon2id$v=19$m=65536,t=4,p=1$UjZMVE1IVzA5TFNkVWEzag$DAx7zduJF4TEEQJ3Uv/Ov5ePEfeZqsNfJmzhY5WtM2Q';
 
+    private const RATE_WINDOW_SECONDS = 900;
+
+    /**
+     * Two keys per login: the address stops one host working through a list of
+     * accounts, the username stops a distributed attempt on a single account.
+     */
+    private const LOGIN_ATTEMPTS_PER_ADDRESS = 20;
+
+    private const LOGIN_ATTEMPTS_PER_USERNAME = 10;
+
+    private const REGISTRATIONS_PER_ADDRESS = 5;
+
+    private const REGISTRATION_WINDOW_SECONDS = 3600;
+
+    private const TOO_MANY_ATTEMPTS = 'Too many attempts. Please try again later.';
+
     private UserRepositoryInterface $users;
 
     private TokenIssuer $tokenIssuer;
 
     private AuthenticatedUser $authenticatedUser;
 
+    private RateLimiter $rateLimiter;
+
     public function __construct(
         ?UserRepositoryInterface $users = null,
         ?TokenIssuer $tokenIssuer = null,
         ?AuthenticatedUser $authenticatedUser = null,
+        ?RateLimiter $rateLimiter = null,
     ) {
         // Restler resolves these from the container (wired in public/index.php);
         // the optional parameters exist so tests can inject doubles.
         $this->users             = $users ?? new DoctrineUserRepository(EntityManagerProvider::get());
         $this->tokenIssuer       = $tokenIssuer ?? TokenIssuer::fromEnvironment();
         $this->authenticatedUser = $authenticatedUser ?? new AuthenticatedUser();
+        $this->rateLimiter       = $rateLimiter ?? (ApcuRateLimiter::isSupported()
+            ? new ApcuRateLimiter()
+            : new NullRateLimiter());
     }
 
     /**
@@ -64,12 +89,19 @@ final class Auth
      * @return array{id: int, username: string}
      *
      * @throws HttpException 400 when the username or password is unacceptable,
-     *                       409 when the username is already taken.
+     *                       409 when the username is already taken,
+     *                       429 when the caller has registered too often.
      */
     public function postRegister(
         string $username,
         #[SensitiveParameter] string $password,
     ): array {
+        $this->assertWithinLimit(
+            'register:' . $this->clientAddress(),
+            self::REGISTRATIONS_PER_ADDRESS,
+            self::REGISTRATION_WINDOW_SECONDS,
+        );
+
         $this->assertPasswordIsAcceptable($password);
 
         try {
@@ -102,12 +134,27 @@ final class Auth
      *
      * @return array{tokenType: string, token: string, expiresIn: int, user: array{id: int, username: string}}
      *
-     * @throws HttpException 401 when the credentials do not match.
+     * @throws HttpException 401 when the credentials do not match,
+     *                       429 when the caller has tried too often.
      */
     public function postLogin(
         string $username,
         #[SensitiveParameter] string $password,
     ): array {
+        $this->assertWithinLimit(
+            'login:addr:' . $this->clientAddress(),
+            self::LOGIN_ATTEMPTS_PER_ADDRESS,
+            self::RATE_WINDOW_SECONDS,
+        );
+
+        // Lowercased so the limit cannot be sidestepped by varying the case,
+        // which the lookup ignores anyway.
+        $this->assertWithinLimit(
+            'login:user:' . mb_strtolower(trim($username)),
+            self::LOGIN_ATTEMPTS_PER_USERNAME,
+            self::RATE_WINDOW_SECONDS,
+        );
+
         $user = $this->findUser($username);
 
         if (!$user instanceof User || !$user->verifyPassword($password)) {
@@ -227,5 +274,36 @@ final class Auth
     private function equaliseTiming(): void
     {
         password_verify('timing-equalisation', self::DUMMY_HASH);
+    }
+
+    /**
+     * Record the attempt and refuse it once the caller is over the limit.
+     *
+     * @throws HttpException 429
+     */
+    private function assertWithinLimit(string $key, int $limit, int $windowSeconds): void
+    {
+        $decision = $this->rateLimiter->hit($key, $limit, $windowSeconds);
+
+        if ($decision->allowed) {
+            return;
+        }
+
+        $exception = new HttpException(429, self::TOO_MANY_ATTEMPTS);
+        $exception->setHeader('Retry-After', (string) $decision->retryAfterSeconds);
+
+        throw $exception;
+    }
+
+    /**
+     * The peer address nginx saw. Behind a CDN or load balancer this becomes
+     * that hop's address, so the forwarded header has to be trusted explicitly
+     * before it can be used here.
+     */
+    private function clientAddress(): string
+    {
+        $address = $_SERVER['REMOTE_ADDR'] ?? '';
+
+        return is_string($address) && $address !== '' ? $address : 'unknown';
     }
 }
