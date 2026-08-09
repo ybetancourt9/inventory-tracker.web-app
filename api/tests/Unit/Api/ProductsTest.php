@@ -286,6 +286,58 @@ final class ProductsTest extends TestCase
         self::assertSame(404, $this->captureIdFailure(fn() => $this->endpoint->remove(9999)));
     }
 
+    public function testARetiredProductRefusesRelativeStockChanges(): void
+    {
+        $id = $this->idOf('WID-001');
+        $this->endpoint->remove($id);
+
+        self::assertSame(409, $this->captureIdFailure(
+            fn() => $this->endpoint->adjustQuantity($id, 1)
+        ));
+
+        // Refused, so the stored quantity is untouched.
+        self::assertSame(120, $this->endpoint->getById($id)['quantity']);
+    }
+
+    public function testARetiredProductRefusesAbsoluteStockChanges(): void
+    {
+        $id = $this->idOf('WID-001');
+        $this->endpoint->remove($id);
+
+        self::assertSame(409, $this->captureIdFailure(
+            fn() => $this->endpoint->patch($id, quantity: 5)
+        ));
+
+        self::assertSame(120, $this->endpoint->getById($id)['quantity']);
+    }
+
+    public function testRestoreBringsAProductBackAndReopensStockChanges(): void
+    {
+        $id = $this->idOf('WID-001');
+        $this->endpoint->remove($id);
+
+        $restored = $this->endpoint->restore($id);
+
+        self::assertTrue($restored['isActive']);
+        self::assertSame(5, $this->endpoint->get()['total']);
+        self::assertSame(121, $this->endpoint->adjustQuantity($id, 1)['quantity']);
+    }
+
+    public function testRestoringAnActiveProductIsHarmless(): void
+    {
+        $id = $this->idOf('WID-001');
+
+        $restored = $this->endpoint->restore($id);
+
+        self::assertTrue($restored['isActive']);
+        self::assertSame(120, $restored['quantity']);
+    }
+
+    public function testRestoreOnAnUnknownIdIs404(): void
+    {
+        self::assertSame(404, $this->captureIdFailure(fn() => $this->endpoint->restore(9999)));
+    }
+
     private function idOf(string $sku): int
     {
         $product = $this->repository->findBySku($sku);

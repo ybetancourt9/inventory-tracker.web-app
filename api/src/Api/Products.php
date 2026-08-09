@@ -133,7 +133,8 @@ final class Products
      *
      * @return array{id: int, sku: string, name: string, quantity: int, isActive: bool, updatedAt: string}
      *
-     * @throws HttpException 400 invalid input, 404 unknown product
+     * @throws HttpException 400 invalid input, 404 unknown product,
+     *                       409 the product is retired
      */
     public function patch(int $id, ?int $quantity = null, ?string $name = null): array
     {
@@ -141,6 +142,10 @@ final class Products
 
         if ($quantity === null && $name === null) {
             throw new HttpException(400, 'Provide a quantity or a name to update.');
+        }
+
+        if ($quantity !== null) {
+            $this->assertStockIsChangeable($product);
         }
 
         try {
@@ -175,11 +180,14 @@ final class Products
      *
      * @return array{id: int, sku: string, name: string, quantity: int, isActive: bool, updatedAt: string}
      *
-     * @throws HttpException 404 unknown product, 409 not enough stock
+     * @throws HttpException 404 unknown product, 409 not enough stock or the
+     *                       product is retired
      */
     public function adjustQuantity(int $id, int $delta): array
     {
         $product = $this->mustFind($id);
+
+        $this->assertStockIsChangeable($product);
 
         try {
             $this->products->adjustQuantity($product, $delta);
@@ -213,6 +221,48 @@ final class Products
         $this->products->save($product);
 
         return $this->presentOne($product);
+    }
+
+    /**
+     * Bring a retired product back into use.
+     *
+     * The counterpart to remove, so retiring is not a one-way door. Restoring
+     * an active product is not an error, which keeps a repeated click harmless.
+     *
+     * @access protected
+     * @url POST {id}/restore
+     *
+     * @param int $id {@from path}
+     *
+     * @return array{id: int, sku: string, name: string, quantity: int, isActive: bool, updatedAt: string}
+     *
+     * @throws HttpException 404
+     */
+    public function restore(int $id): array
+    {
+        $product = $this->mustFind($id);
+
+        if (!$product->isActive()) {
+            $product->activate();
+            $this->products->save($product);
+        }
+
+        return $this->presentOne($product);
+    }
+
+    /**
+     * Refuse stock movements on a retired product.
+     *
+     * Checked against the entity already in memory, so a rejected change costs
+     * no write and the caller is told to restore it first.
+     *
+     * @throws HttpException 409
+     */
+    private function assertStockIsChangeable(Product $product): void
+    {
+        if (!$product->isActive()) {
+            throw new HttpException(409, 'That product is retired. Restore it before changing stock.');
+        }
     }
 
     /**
