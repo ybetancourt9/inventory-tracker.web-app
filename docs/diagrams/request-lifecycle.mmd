@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant B as Browser
+    participant C as Caddy
+    participant N as nginx
+    participant P as PHP-FPM
+    participant D as MySQL
+
+    B->>C: HTTPS GET /api/products?search=SSD
+    C->>N: HTTP, adds X-Real-IP
+    N->>P: FastCGI, /products?search=SSD
+    P->>P: Route lookup
+    P->>P: JwtAuthenticator verifies bearer token
+    P->>P: ProductQuery validates and clamps input
+    P->>D: SELECT with bound parameters
+    D-->>P: Rows
+    P-->>N: JSON
+    N-->>C: JSON
+    C-->>B: JSON over HTTPS

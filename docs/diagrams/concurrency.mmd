@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant A as Request A
+    participant B as Request B
+    participant D as Database
+
+    Note over A,D: Read then write, the broken version
+    A->>D: SELECT quantity
+    D-->>A: 100
+    B->>D: SELECT quantity
+    D-->>B: 100
+    A->>D: UPDATE quantity = 99
+    B->>D: UPDATE quantity = 99
+    Note over D: Two decrements applied, one lost
+
+    Note over A,D: Conditional update, the fix
+    A->>D: UPDATE quantity = quantity - 1 WHERE quantity - 1 >= 0
+    D-->>A: 1 row affected
+    B->>D: UPDATE quantity = quantity - 1 WHERE quantity - 1 >= 0
+    D-->>B: 1 row affected
+    Note over D: 98, both applied

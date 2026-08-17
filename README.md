@@ -2,7 +2,7 @@
 
 A web application for tracking stock levels.
 
-**Live application: https://inventtracker.com**
+**Live application: [inventtracker.com](https://inventtracker.com)**
 
 ---
 
@@ -26,26 +26,7 @@ It began as an Android application built in CS 360 that stored its data on a sin
 
 ## How the pieces fit together
 
-```mermaid
-flowchart LR
-    user["Browser"]
-
-    subgraph host["Application host"]
-        caddy["Caddy<br/>TLS termination"]
-        nginx["nginx<br/>static files + routing"]
-        api["PHP-FPM<br/>REST API"]
-    end
-
-    db[("MySQL 8.0<br/>AWS RDS")]
-
-    static["Compiled Angular bundle"]
-
-    user -- "HTTPS" --> caddy
-    caddy -- "HTTP" --> nginx
-    nginx -- "serves" --> static
-    nginx -- "/api/* over FastCGI" --> api
-    api -- "TLS, port 3306" --> db
-```
+![Browser to Caddy to nginx, which serves the compiled Angular bundle and passes API calls to PHP-FPM, which reaches MySQL on RDS over TLS](docs/img/system-overview.svg)
 
 The client and the API are served from the same origin, which is why the browser never makes a cross-origin request and CORS stays switched off. The database is not reachable from the internet at all, and the API reaches it over an encrypted connection that the server refuses to make in plain text.
 
@@ -53,9 +34,11 @@ The client and the API are served from the same origin, which is why the browser
 
 | Document | What is in it |
 | --- | --- |
-| [Architecture](docs/architecture.md) | Diagrams for the request lifecycle, the database schema, and the deployment |
-| [API reference](docs/api.md) | Every endpoint, its parameters, responses, and error codes |
-| [Decision records](docs/decisions.md) | Twenty decisions, what each cost, and why the alternative was rejected |
+| [Architecture](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/architecture) | Diagrams for the request lifecycle, the database schema, and the deployment |
+| [API reference](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/api) | Every endpoint, its parameters, responses, and error codes |
+| [Decision records](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/decisions) | Twenty decisions, what each cost, and why the alternative was rejected |
+
+Diagram sources live in [`docs/diagrams`](docs/diagrams) as Mermaid text and are rendered to SVG by `scripts/render-diagrams.ps1`.
 
 ## Context
 

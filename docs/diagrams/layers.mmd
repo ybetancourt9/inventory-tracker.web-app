@@ -1,0 +1,37 @@
+flowchart TD
+    subgraph api["HTTP layer"]
+        auth["Auth"]
+        products["Products"]
+        health["Health"]
+        filter["JwtAuthenticator"]
+    end
+
+    subgraph app["Application layer"]
+        issuer["TokenIssuer"]
+        verifier["TokenVerifier"]
+        limiter["RateLimiter"]
+    end
+
+    subgraph domain["Domain layer"]
+        entities["Product, User"]
+        query["ProductQuery, ProductSort"]
+        ports["Repository interfaces"]
+    end
+
+    subgraph infra["Infrastructure layer"]
+        doctrine["Doctrine repositories"]
+        apcu["APCu rate limiter"]
+    end
+
+    dbx[("MySQL")]
+
+    products --> ports
+    auth --> ports
+    auth --> issuer
+    auth --> limiter
+    filter --> verifier
+    products --> query
+    ports --> entities
+    doctrine -. implements .-> ports
+    apcu -. implements .-> limiter
+    doctrine --> dbx

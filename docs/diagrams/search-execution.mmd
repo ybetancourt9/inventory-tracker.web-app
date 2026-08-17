@@ -1,0 +1,10 @@
+flowchart TD
+    input["search term"] --> escape["Escape % and _ then append wildcard"]
+    escape --> branchA["Match on name<br/>uses idx_products_active_name"]
+    escape --> branchB["Match on sku<br/>uses uniq_products_sku"]
+    branchA --> union["UNION, then sort and page"]
+    branchB --> union
+    union --> ids["Ordered list of matching IDs"]
+    ids --> hydrate["Load those products"]
+    hydrate --> map["Reorder using a hash map keyed by ID"]
+    map --> out["Page of results"]

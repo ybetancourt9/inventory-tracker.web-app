@@ -1,0 +1,18 @@
+flowchart LR
+    user["Browser"]
+
+    subgraph host["Application host"]
+        caddy["Caddy<br/>TLS termination"]
+        nginx["nginx<br/>static files + routing"]
+        api["PHP-FPM<br/>REST API"]
+    end
+
+    db[("MySQL 8.0<br/>AWS RDS")]
+
+    static["Compiled Angular bundle"]
+
+    user -- "HTTPS" --> caddy
+    caddy -- "HTTP" --> nginx
+    nginx -- "serves" --> static
+    nginx -- "/api/* over FastCGI" --> api
+    api -- "TLS, port 3306" --> db

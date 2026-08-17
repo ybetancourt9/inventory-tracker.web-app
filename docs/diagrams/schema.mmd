@@ -1,0 +1,18 @@
+erDiagram
+    PRODUCTS {
+        int id PK "auto increment"
+        varchar sku UK "64, unique"
+        varchar name "128, indexed with is_active"
+        int quantity "default 0, CHECK >= 0"
+        boolean is_active "default true, soft delete"
+        datetime created_at
+        datetime updated_at
+    }
+
+    USERS {
+        int id PK "auto increment"
+        varchar username UK "64, unique, lowercased"
+        varchar password_hash "255, Argon2id"
+        datetime created_at
+        datetime updated_at
+    }

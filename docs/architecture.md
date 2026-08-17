@@ -16,45 +16,7 @@ How the Inventory Tracker is put together, and why it is put together that way.
 
 The API follows a ports and adapters arrangement. The domain layer holds entities and the interfaces they need, and it depends on nothing. Infrastructure supplies the implementations. The consequence is that business rules can be tested without a database, and the database can be swapped without touching them.
 
-```mermaid
-flowchart TD
-    subgraph api["HTTP layer"]
-        auth["Auth"]
-        products["Products"]
-        health["Health"]
-        filter["JwtAuthenticator"]
-    end
-
-    subgraph app["Application layer"]
-        issuer["TokenIssuer"]
-        verifier["TokenVerifier"]
-        limiter["RateLimiter"]
-    end
-
-    subgraph domain["Domain layer"]
-        entities["Product, User"]
-        query["ProductQuery, ProductSort"]
-        ports["Repository interfaces"]
-    end
-
-    subgraph infra["Infrastructure layer"]
-        doctrine["Doctrine repositories"]
-        apcu["APCu rate limiter"]
-    end
-
-    dbx[("MySQL")]
-
-    products --> ports
-    auth --> ports
-    auth --> issuer
-    auth --> limiter
-    filter --> verifier
-    products --> query
-    ports --> entities
-    doctrine -. implements .-> ports
-    apcu -. implements .-> limiter
-    doctrine --> dbx
-```
+![Ports and adapters: the HTTP layer and infrastructure both depend on the domain layer, which depends on nothing](img/layers.svg)
 
 The dotted lines are the inversion. Nothing in the domain layer knows Doctrine exists. The composition root in `api/public/index.php` is the single place where interfaces are bound to implementations, which means the wiring is readable in one file rather than scattered across the codebase.
 
@@ -62,26 +24,7 @@ The dotted lines are the inversion. Nothing in the domain layer knows Doctrine e
 
 Every request enters through a single front controller. nginx rewrites all non-file requests to `index.php` and refuses to execute any other PHP file, so there is exactly one way in.
 
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant C as Caddy
-    participant N as nginx
-    participant P as PHP-FPM
-    participant D as MySQL
-
-    B->>C: HTTPS GET /api/products?search=SSD
-    C->>N: HTTP, adds X-Real-IP
-    N->>P: FastCGI, /products?search=SSD
-    P->>P: Route lookup
-    P->>P: JwtAuthenticator verifies bearer token
-    P->>P: ProductQuery validates and clamps input
-    P->>D: SELECT with bound parameters
-    D-->>P: Rows
-    P-->>N: JSON
-    N-->>C: JSON
-    C-->>B: JSON over HTTPS
-```
+![A request passing from the browser through Caddy, nginx and PHP-FPM to MySQL and back](img/request-lifecycle.svg)
 
 Two details in that chain matter more than they look.
 
@@ -91,24 +34,7 @@ nginx strips the `/api` prefix before handing the request to PHP, so the API has
 
 Authentication is stateless. There is no server-side session, so any instance can serve any request.
 
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant A as API
-    participant D as Database
-
-    B->>A: POST /auth/login
-    A->>D: Look up user by username
-    D-->>A: User or nothing
-    A->>A: Verify password with Argon2id
-    Note over A: Failure paths spend the same time,<br/>so a missing account cannot be<br/>distinguished from a wrong password
-    A-->>B: 200, signed token valid for one hour
-
-    B->>A: GET /products with bearer token
-    A->>A: Verify signature, algorithm pinned to HS256
-    A->>A: Check expiry and issuer
-    A-->>B: 200 with data, or 401
-```
+![Login exchanging credentials for a signed token, then a later request being verified against it](img/authentication.svg)
 
 The verification step pins the algorithm rather than reading it from the token. A token that declares a different algorithm is rejected instead of being verified on its own terms, which closes the algorithm confusion attack where a caller supplies a token asking to be checked with a weaker scheme.
 
@@ -118,26 +44,7 @@ Rate limits apply before any work is done. Login allows twenty attempts per addr
 
 Two tables, with no relationship between them.
 
-```mermaid
-erDiagram
-    PRODUCTS {
-        int id PK "auto increment"
-        varchar sku UK "64, unique"
-        varchar name "128, indexed with is_active"
-        int quantity "default 0, CHECK >= 0"
-        boolean is_active "default true, soft delete"
-        datetime created_at
-        datetime updated_at
-    }
-
-    USERS {
-        int id PK "auto increment"
-        varchar username UK "64, unique, lowercased"
-        varchar password_hash "255, Argon2id"
-        datetime created_at
-        datetime updated_at
-    }
-```
+![Entity relationship diagram of the products and users tables, which have no relationship between them](img/schema.svg)
 
 **There is deliberately no foreign key between them.** The application has no concept of product ownership. Every signed-in user works with the same shared inventory, which is how a stockroom actually operates. Adding an owner column would mean either assigning arbitrary owners to existing products or leaving the column empty everywhere, and both encode a relationship the domain does not have.
 
@@ -162,18 +69,7 @@ Searching name and SKU in a single condition reads naturally and performs badly,
 
 The query is therefore split so each half can use its own index, and the results are combined.
 
-```mermaid
-flowchart TD
-    input["search term"] --> escape["Escape % and _ then append wildcard"]
-    escape --> branchA["Match on name<br/>uses idx_products_active_name"]
-    escape --> branchB["Match on sku<br/>uses uniq_products_sku"]
-    branchA --> union["UNION, then sort and page"]
-    branchB --> union
-    union --> ids["Ordered list of matching IDs"]
-    ids --> hydrate["Load those products"]
-    hydrate --> map["Reorder using a hash map keyed by ID"]
-    map --> out["Page of results"]
-```
+![A search term escaped, matched separately against name and SKU, combined, paged, then reordered through a hash map](img/search-execution.svg)
 
 The wildcard is only appended, never prepended. A pattern like `term%` can use an index, while `%term%` forces a full scan and would undo the point of indexing the column. The cost of that decision is that searching for a word in the middle of a name will not match it, which is a real limitation and a deliberate trade.
 
@@ -183,28 +79,7 @@ The hash map exists because the second query returns rows in whatever order the 
 
 The original implementation read the current quantity, adjusted it in application code, and wrote the result back. One hundred simultaneous decrements against a stock of one hundred lost forty one of them, silently.
 
-```mermaid
-sequenceDiagram
-    participant A as Request A
-    participant B as Request B
-    participant D as Database
-
-    Note over A,D: Read then write, the broken version
-    A->>D: SELECT quantity
-    D-->>A: 100
-    B->>D: SELECT quantity
-    D-->>B: 100
-    A->>D: UPDATE quantity = 99
-    B->>D: UPDATE quantity = 99
-    Note over D: Two decrements applied, one lost
-
-    Note over A,D: Conditional update, the fix
-    A->>D: UPDATE quantity = quantity - 1 WHERE quantity - 1 >= 0
-    D-->>A: 1 row affected
-    B->>D: UPDATE quantity = quantity - 1 WHERE quantity - 1 >= 0
-    D-->>B: 1 row affected
-    Note over D: 98, both applied
-```
+![Two concurrent decrements losing an update under read-then-write, and both applying under a conditional update](img/concurrency.svg)
 
 The arithmetic and the floor check happen inside a single statement, so the database decides the outcome rather than the application. When the condition fails no row is affected, and the API turns that into a 409 rather than reporting a success that did not happen.
 
@@ -212,33 +87,7 @@ The arithmetic and the floor check happen inside a single statement, so the data
 
 The application runs as container images on a single virtual machine, talking to a managed database.
 
-```mermaid
-flowchart TB
-    dev["Workstation"]
-    ecr["Container registry"]
-
-    subgraph cloud["AWS, single region"]
-        subgraph vpc["Virtual private cloud"]
-            subgraph ec2["Application host"]
-                cad["Caddy"]
-                ngx["nginx"]
-                php["PHP-FPM"]
-            end
-            rds[("MySQL, no public address")]
-            bastion["Bastion, no inbound ports"]
-        end
-        params["Parameter Store<br/>encrypted secrets"]
-        dns["DNS"]
-    end
-
-    dev -- "build, tag with commit" --> ecr
-    ecr -- "pull on deploy" --> ec2
-    dev -- "deploy over SSM" --> ec2
-    params -- "injected at startup" --> php
-    php -- "TLS" --> rds
-    bastion -- "tunnel for migrations" --> rds
-    dns --> cad
-```
+![Workstation building images into a registry, pulled onto an EC2 host that reaches a private RDS instance](img/deployment.svg)
 
 Three decisions are worth calling out.
 

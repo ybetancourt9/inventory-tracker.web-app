@@ -1,0 +1,25 @@
+flowchart TB
+    dev["Workstation"]
+    ecr["Container registry"]
+
+    subgraph cloud["AWS, single region"]
+        subgraph vpc["Virtual private cloud"]
+            subgraph ec2["Application host"]
+                cad["Caddy"]
+                ngx["nginx"]
+                php["PHP-FPM"]
+            end
+            rds[("MySQL, no public address")]
+            bastion["Bastion, no inbound ports"]
+        end
+        params["Parameter Store<br/>encrypted secrets"]
+        dns["DNS"]
+    end
+
+    dev -- "build, tag with commit" --> ecr
+    ecr -- "pull on deploy" --> ec2
+    dev -- "deploy over SSM" --> ec2
+    params -- "injected at startup" --> php
+    php -- "TLS" --> rds
+    bastion -- "tunnel for migrations" --> rds
+    dns --> cad

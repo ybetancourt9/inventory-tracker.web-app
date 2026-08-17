@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant B as Browser
+    participant A as API
+    participant D as Database
+
+    B->>A: POST /auth/login
+    A->>D: Look up user by username
+    D-->>A: User or nothing
+    A->>A: Verify password with Argon2id
+    Note over A: Failure paths spend the same time,<br/>so a missing account cannot be<br/>distinguished from a wrong password
+    A-->>B: 200, signed token valid for one hour
+
+    B->>A: GET /products with bearer token
+    A->>A: Verify signature, algorithm pinned to HS256
+    A->>A: Check expiry and issuer
+    A-->>B: 200 with data, or 401
