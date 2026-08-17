@@ -38,7 +38,7 @@ The client and the API are served from the same origin, which is why the browser
 | [API reference](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/api) | Every endpoint, its parameters, responses, and error codes |
 | [Decision records](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/decisions) | Twenty decisions, what each cost, and why the alternative was rejected |
 
-Diagram sources live in [`docs/diagrams`](docs/diagrams) as Mermaid text and are rendered to SVG by `scripts/render-diagrams.ps1`.
+Diagram sources live in [`docs/diagrams`](docs/diagrams).
 
 ## Context
 
