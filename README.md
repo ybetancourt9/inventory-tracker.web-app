@@ -60,7 +60,7 @@ It also taught me to state limitations plainly. My search matches a prefix rathe
 
 The capstone is built alone, so my experience of team environments comes mostly from professional work. What this program added is the practice of making my work legible to someone who is not me.
 
-The code review earlier in this course required explaining existing code to an audience that could not read my mind, which is a different skill from understanding it privately. Most of what I built afterward reflects that. The schema is defined by 5 versioned migrations, so a schema change arrives as a reviewable diff instead of a surprise. The integration suite means a contributor who changes a query finds out immediately whether they broke it. The dependency wiring lives in a single file that can be read in one sitting. None of those choices help a solo developer much, and all of them matter to whoever inherits the project.
+The schema is defined by 5 versioned migrations, so a schema change arrives as a reviewable diff instead of a surprise. The integration suite means a contributor who changes a query finds out immediately whether they broke it. The dependency wiring lives in a single file that can be read in one sitting. None of those choices help a solo developer much, and all of them matter to whoever inherits the project.
 
 ### Where this leaves me
 
