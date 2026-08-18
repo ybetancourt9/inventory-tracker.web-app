@@ -1,10 +1,10 @@
-# Inventory Tracker
+Professional Self-Assessment
 
-A web application for tracking stock levels.
+Yaumel Betancourt
 
-**Live application: [inventtracker.com](https://inventtracker.com)**
+CS 499 Computer Science Capstone
 
----
+Southern New Hampshire University
 
 ## Introduction
 
@@ -14,7 +14,7 @@ The capstone is where I put that to the test. The artifact is an inventory appli
 
 What follows is what the process taught me. The most valuable parts were not techniques I could have read about. They were the times a measurement contradicted something I was confident in.
 
-### Measuring instead of assuming
+## Measuring instead of assuming
 
 The clearest example is the search feature. My original implementation examined 14,834 database rows to return 25 results. It reads naturally and would have passed a code review, because nothing about reading the code suggests a problem. It only became visible when I ran it against a realistic amount of data and looked at the query plan, which showed that a single condition spanning two columns prevents the database from narrowing its scan.
 
@@ -24,13 +24,13 @@ Two correct ideas were not enough on their own. If I had stopped after the first
 
 A related lesson came from a data structure. My plan called for a hash map before I knew where one belonged, and the place it turned out to be necessary was not where I expected. Reordering results by identifier after loading them would have been quadratic, and a map keyed by identifier made the same work linear. The structure earned its place because the algorithm needed it, not because the plan mentioned one.
 
-### What a passing test suite does not tell you
+## What a passing test suite does not tell you
 
 The single most instructive bug in this project was one that a full suite of passing tests failed to catch. My search used a bound parameter in a position the query language does not permit, which meant every search request would have failed against the real database. Fifty five unit tests passed anyway, because they ran against an in-memory substitute that happily accepted a query the real engine rejects.
 
 I built a separate integration suite that runs against real MySQL, and then checked that it was worth having by deliberately reintroducing the bug. The unit tests passed 118 out of 118 while the integration tests failed immediately. The system now carries 163 tests across the two suites, and I think about them differently. Tests against a substitute verify my logic. Only tests against the real engine verify my queries. I had understood that distinction abstractly for years without ever having been burned by it, and being burned by it is what made it real.
 
-### Moving rules into the database
+## Moving rules into the database
 
 Working on the database category changed where I think rules belong. In the original application the rule that stock cannot go negative existed only as a check in application code, which means it held exactly as long as every code path remembered to call it. The rebuilt version enforces it with a database constraint that refuses the value regardless of what sends the statement. A rule the application enforces is a convention, and a rule the database enforces is a guarantee.
 
@@ -38,7 +38,7 @@ Concurrency taught me something less obvious. My quantity adjustment read the cu
 
 I also learned to think about infrastructure in cost terms. Choosing between two managed database services, the honest comparison was not about which was more capable. One charges for reserved capacity and the other for every read and write, and the more powerful option would have roughly quadrupled the bill. When I measured actual usage it was about 1 percent of the capacity already provisioned, which made the cheaper service the correct engineering answer rather than a compromise. I had never before had to justify an architectural decision in dollars, and I expect to do it for the rest of my career.
 
-### Security in the configuration you actually run
+## Security in the configuration you actually run
 
 I already treated security as something to design in rather than add on. What this project taught me is how much of it depends on the environment you actually deploy rather than the one you develop in.
 
@@ -48,7 +48,7 @@ The lesson arrived when I ran the application in production configuration for th
 
 Deriving permissions taught me something similar. My instinct was to grant the application the familiar set including delete. Before doing it I checked whether the code issues a delete anywhere, and it does not, because retiring a product sets a flag instead. Granting it would have handed the running application the ability to destroy data it has no path to destroy. Deriving permissions from what the code does, rather than from what applications usually need, produced something tighter than habit would have.
 
-### Writing it down changed what I built
+## Writing it down changed what I built
 
 I expected documentation to be a task at the end. It turned out to affect the work itself.
 
@@ -56,101 +56,16 @@ The system now carries 8 architecture diagrams, a reference for all 11 endpoints
 
 It also taught me to state limitations plainly. My search matches a prefix rather than a substring, which is a deliberate trade that keeps the query able to use an index and genuinely means a user cannot find a word in the middle of a product name. Writing that down as a cost rather than omitting it made the document more useful and, I think, more credible. I applied the same approach to weaknesses I accepted rather than removed, including where the browser stores the authentication token, recording the condition under which each must be revisited.
 
-### Working so others can follow
+## Working so others can follow
 
 The capstone is built alone, so my experience of team environments comes mostly from professional work. What this program added is the practice of making my work legible to someone who is not me.
 
 The code review earlier in this course required explaining existing code to an audience that could not read my mind, which is a different skill from understanding it privately. Most of what I built afterward reflects that. The schema is defined by 5 versioned migrations, so a schema change arrives as a reviewable diff instead of a surprise. The integration suite means a contributor who changes a query finds out immediately whether they broke it. The dependency wiring lives in a single file that can be read in one sitting. None of those choices help a solo developer much, and all of them matter to whoever inherits the project.
 
-### Where this leaves me
+## Where this leaves me
 
 I want to move into a systems architect role, and this program changed my understanding of what that work is. I used to think architecture was the design you produce before the code, meaning the decisions and diagrams that come first. I now think that is half of it. The other half is confirming that the design behaves the way you said it would, and this project gave me several reminders that a decision can be defensible on paper and wrong in practice.
 
 The specific gap I set out to close was cloud infrastructure, which is why I built and deployed the infrastructure myself rather than staying in the backend code where I was already comfortable. The application runs at a public address on infrastructure I provisioned, which taught me more about managed services, cost, and operational security than reading about them would have. I plan to continue in that direction with an AWS certification after I finish the degree.
 
 What I take from the program overall is a stricter standard for what counts as knowing something. Before this I would have said I understood indexing, concurrency, and least privilege, and I would have been describing familiarity rather than knowledge. Having measured a query plan, watched 41 updates disappear, and been refused by a database I had deliberately restricted, I understand them differently. The artifacts that follow are the record of that difference.
-
-## What it does
-
-Inventory Tracker keeps a list of products and how many of each are in stock. You can search for an item by name or product code, sort the list, filter it down to items running low, and adjust quantities up or down as stock moves. Items that are no longer carried can be retired without deleting their history, and retired items can be brought back.
-
-It began as an Android application built in CS 360 that stored its data on a single phone. Only the person holding that phone could see or change anything, and if the phone was lost the inventory went with it. This version runs as a website, so several people can work from the same inventory at the same time, and the data lives in a managed database that is backed up automatically.
-
-## Components
-
-| Layer | Technology |
-| --- | --- |
-| Client | Angular 22, standalone components and signals |
-| Web server | nginx, serving the compiled client and routing API calls |
-| API | PHP 8.4 with Restler 6 |
-| Data access | Doctrine ORM 3 with versioned migrations |
-| Database | MySQL 8.0 on AWS RDS |
-| TLS | Caddy, with certificates issued and renewed automatically |
-| Local development | Docker Compose, every image pinned to an exact version |
-
-## Request flow
-
-![Browser to Caddy to nginx, which serves the compiled Angular bundle and passes API calls to PHP-FPM, which reaches MySQL on RDS over TLS](docs/img/system-overview.svg)
-
-The client and the API are served from the same origin, which is why the browser never makes a cross-origin request and CORS stays switched off. The database is not reachable from the internet at all, and the API reaches it over an encrypted connection that the server refuses to make in plain text.
-
-## Documentation
-
-| Document | What is in it |
-| --- | --- |
-| [Architecture](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/architecture) | Diagrams for the request lifecycle, the database schema, and the deployment |
-| [API reference](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/api) | Every endpoint, its parameters, responses, and error codes |
-| [Decision records](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/decisions) | Twenty decisions, what each cost, and why the alternative was rejected |
-
-Diagram sources live in [`docs/diagrams`](docs/diagrams).
-
-## Context
-
-The application was enhanced across the three categories the capstone requires. Each has a written narrative explaining what changed and why.
-
-**Software design and engineering.** The monolithic Android application was separated into an Angular client, a REST API, and a database, with authentication built around JSON Web Tokens and passwords hashed with Argon2id.
-
-**Algorithms and data structures.** Search, sorting, filtering, and pagination were pushed into indexed database queries rather than done in application memory. Query plans were measured against twenty thousand rows rather than assumed, and more than one design changed as a result.
-
-**Databases.** The data moved from a local SQLite file to MySQL on AWS RDS, with the schema defined by versioned migrations, a constraint that makes negative stock impossible, an atomic update that fixes lost updates under concurrent changes, and an application account restricted to reading and writing rows.
-
-## Running it locally
-
-Docker is the only requirement. Nothing is installed on the host.
-
-```bash
-cp .env.example .env      # then fill in the values
-docker compose up -d
-```
-
-| Service | Address |
-| --- | --- |
-| Client, with live reload | http://localhost:4200 |
-| API | http://localhost:8080 |
-
-Quality checks run inside the API container.
-
-```bash
-docker compose exec api php vendor/bin/phpcs                       # PSR-12
-docker compose exec api php vendor/bin/phpstan analyse             # level 6
-docker compose exec api php vendor/bin/phpunit --testsuite unit
-docker compose exec api php vendor/bin/phpunit --testsuite integration
-```
-
-The two test suites are separate on purpose. Unit tests run against in-memory doubles and verify logic. Integration tests run against a real MySQL instance and verify the queries themselves, which is a distinction that caught a bug the unit tests could not see.
-
-## Repository layout
-
-```
-api/            PHP REST API
-  src/Domain/         entities, value objects, repository interfaces
-  src/Application/    use-case services
-  src/Infrastructure/ Doctrine adapters
-  src/Api/            HTTP endpoints
-  migrations/         versioned schema changes
-  tests/              unit and integration suites
-web/            Angular client
-docker/         nginx configuration
-deploy/         AWS deployment configuration
-docs/           architecture and API documentation
-```
