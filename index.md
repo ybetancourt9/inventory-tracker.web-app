@@ -1,9 +1,3 @@
-# Yaumel Betancourt
-
-## CS 499 Computer Science Capstone ePortfolio
-
-Southern New Hampshire University
-
 This ePortfolio presents a single application enhanced across three categories of computer science practice. Every document and every folder of code referenced below lives in [this repository](https://github.com/ybetancourt9/inventory-tracker.web-app).
 
 **The finished application is deployed and running at [inventtracker.com](https://inventtracker.com).**
@@ -104,7 +98,6 @@ Code produced by this enhancement:
 
 ## Supporting documentation
 
-Written for a reader who did not build the system and may need to change it.
 
 | Document | Contents |
 | --- | --- |
@@ -112,3 +105,4 @@ Written for a reader who did not build the system and may need to change it.
 | [API reference](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/api) | All eleven endpoints with parameters, responses, and error codes |
 | [Decision records](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/decisions) | Twenty decisions, what each cost, and why the alternative was rejected |
 | [Repository README](https://github.com/ybetancourt9/inventory-tracker.web-app#readme) | How to run the project locally and what the layout means |
+

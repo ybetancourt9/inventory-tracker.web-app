@@ -1,0 +1,31 @@
+# GitHub Pages configuration for the ePortfolio.
+#
+# The theme is set here rather than through the repository settings so it is
+# version controlled. If a theme is also selected in Settings, remove it there
+# so there is one source of truth.
+#
+# title and description populate the banner Cayman renders at the top of every
+# page, which is why index.md does not repeat them in its own content.
+
+theme: jekyll-theme-cayman
+
+title: Yaumel Betancourt
+description: CS 499 Computer Science Capstone
+
+# Only the ePortfolio and its documentation belong on the site. Everything else
+# in the repository is source code and would otherwise be copied into the build.
+include:
+  - docs
+exclude:
+  - api
+  - web
+  - deploy
+  - docker
+  - scripts
+  - vendor
+  - "*.yml"
+  - "*.yaml"
+  - Dockerfile
+  - .dockerignore
+  - .editorconfig
+  - .gitattributes
