@@ -25,7 +25,7 @@ This ePortfolio presents a single application enhanced across three categories o
 
 The self-assessment introduces this portfolio and reflects on what the program and the capstone taught me, including the places where a measurement contradicted something I was confident in.
 
-**[Read the professional self-assessment](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/professional-self-assessment)**
+**[Read the professional self-assessment](https://ybetancourt9.github.io/inventory-tracker.web-app/docs/professional-self-assessment)** or [download the Word document](https://github.com/ybetancourt9/inventory-tracker.web-app/blob/main/docs/CS%20499%20Professional%20Self-Assessment.docx)
 
 ---
 
