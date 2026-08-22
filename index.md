@@ -1,4 +1,4 @@
-This ePortfolio presents a single application enhanced across three categories of computer science practice. Every document and every folder of code referenced below lives in [this repository](https://github.com/ybetancourt9/inventory-tracker.web-app).
+Every document and every folder of code referenced below lives in [this repository](https://github.com/ybetancourt9/inventory-tracker.web-app).
 
 **The finished application is deployed and running at [inventtracker.com](https://inventtracker.com).**
 
